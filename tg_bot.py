@@ -24,7 +24,7 @@ _logger = logging.getLogger(__name__)
 
 class BotManager:
     def __init__(self, db_client: DBClient, google_client: Aiogoogle):
-        self._bot_client = Client("gdrive_book_saver", APP_CLIENT_ID, APP_API_HASH, bot_token=BOT_TOKEN)
+        self._bot_client = Client("gdrive_tg_bot", APP_CLIENT_ID, APP_API_HASH, bot_token=BOT_TOKEN)
         self._google_client = google_client
         self._db_client = db_client
 
@@ -96,7 +96,12 @@ class BotManager:
 
     async def _save_to_google_drive(self, app, message: Message):
         if (user_creds := await self._authenticate_user(message)) is not None:
-            await self._upload_file_to_google_drive(app, message, user_creds)
+            try:
+                await self._upload_file_to_google_drive(app, message, user_creds)
+            except Exception as e:
+                await message.reply("I can't save it right now. But you can come later and I hope I'll do it.")
+                _logger.error(str(e))
+
         else:
             await message.reply("Authentication failed.\nTry again later.")
 
