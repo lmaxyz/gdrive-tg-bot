@@ -44,7 +44,7 @@ class DBClient:
         await self._connection.execute("UPDATE creds SET data=? WHERE secret=?;", (data, secret))
         await self._connection.commit()
 
-    async def get_secret(self, secret: str) -> str | None:
+    async def get_secret(self, secret: str) -> str:
         cursor = await self._connection.execute("SELECT secret FROM creds WHERE secret=?;", (secret,))
 
         if (result := await cursor.fetchone()) is not None:
@@ -52,7 +52,7 @@ class DBClient:
         print(result)
         return None
 
-    async def get_user_creds(self, user_id: int) -> dict | None:
+    async def get_user_creds(self, user_id: int) -> dict:
         cursor = await self._connection.execute("SELECT data FROM creds WHERE user_id=?;", (user_id,))
 
         if (result := await cursor.fetchone()) is not None and result[0] is not None:
