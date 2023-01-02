@@ -109,16 +109,26 @@ class BotManager:
 
     async def _make_file_public(self, _app, callback: CallbackQuery):
         file_id = callback.data
-        if (user_creds := await self._authenticate_user(callback.message)) is not None:
-            async with self._google_client as google:
-                drive_v3 = await google.discover('drive', 'v3')
-                update_request = drive_v3.permissions.create(
-                    fileId=file_id,
-                    json={'type': 'anyone', 'role': 'reader'}
-                )
-                await google.as_user(update_request, user_creds=user_creds)
 
-            await callback.message.reply("✅ File can be shared now.")
+        if (user_creds := await self._authenticate_user(callback.message)) is not None:
+            try:
+                async with self._google_client as google:
+                    drive_v3 = await google.discover('drive', 'v3')
+                    update_request = drive_v3.permissions.create(
+                        fileId=file_id,
+                        json={'type': 'anyone', 'role': 'reader'}
+                    )
+                    await google.as_user(update_request, user_creds=user_creds)
+
+            except Exception as e:
+                _logger.error(str(e))
+                await callback.message.reply("❌ Failed to make file public. Try again later.")
+
+            else:
+                await callback.message.reply("✅ File can be shared now.")
+
+        else:
+            await callback.message.reply("❌ Authentication failed.\nTry again later.")
 
     async def _save_to_google_drive(self, app, message: Message):
         if (user_creds := await self._authenticate_user(message)) is not None:
