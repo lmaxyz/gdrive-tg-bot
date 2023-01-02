@@ -125,7 +125,7 @@ class BotManager:
                 await callback.message.reply("❌ Failed to make file public. Try again later.")
 
             else:
-                await callback.message.reply("✅ File can be shared now.")
+                await callback.message.reply("🚀 File can be shared now.")
 
         else:
             await callback.message.reply("❌ Authentication failed.\nTry again later.")
