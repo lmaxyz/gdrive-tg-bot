@@ -3,11 +3,12 @@ import asyncio
 import time
 
 from pyrogram import Client, filters
-from pyrogram.handlers import MessageHandler
+from pyrogram.handlers import MessageHandler, CallbackQueryHandler
 from pyrogram.types import (
     InlineKeyboardMarkup,
     InlineKeyboardButton,
     Message,
+    CallbackQuery,
 )
 
 from aiogoogle import Aiogoogle
@@ -32,6 +33,7 @@ class BotManager:
 
     def __register_handlers(self):
         self._bot_client.add_handler(MessageHandler(self._save_to_google_drive, filters.media))
+        self._bot_client.add_handler(CallbackQueryHandler(self._make_file_public))
 
     async def _authenticate_user(self, message):
         if (user_creds := await self._db_client.get_user_creds(message.chat.id)) is not None:
@@ -89,21 +91,45 @@ class BotManager:
         async with self._google_client as google:
             drive_v3 = await google.discover('drive', 'v3')
 
-            await google.as_user(
-                drive_v3.files.create(pipe_from=_CustomFileBuffer(file.getbuffer()), json=metadata),
-                user_creds=UserCreds(**user_creds)
+            upload_request = drive_v3.files.create(
+                pipe_from=_CustomFileBuffer(file.getbuffer()),
+                json=metadata,
+                fields='id,name,webContentLink,webViewLink'
             )
+
+            upload_response = await google.as_user(upload_request, user_creds=UserCreds(**user_creds))
+
+            reply_markup = InlineKeyboardMarkup([
+                [InlineKeyboardButton("View File", url=upload_response['webViewLink'])],
+                [InlineKeyboardButton("Download File", url=upload_response['webContentLink'])],
+                [InlineKeyboardButton("Make File shareable", callback_data=upload_response['id'])]
+            ])
+
+            await message.reply(f"✅ File **{file_name}** uploaded successfully.", reply_markup=reply_markup)
+
+    async def _make_file_public(self, _app, callback: CallbackQuery):
+        file_id = callback.data
+        if (user_creds := await self._authenticate_user(callback.message)) is not None:
+            async with self._google_client as google:
+                drive_v3 = await google.discover('drive', 'v3')
+                update_request = drive_v3.permissions.create(
+                    fileId=file_id,
+                    json={'type': 'anyone', 'role': 'reader'}
+                )
+                await google.as_user(update_request, user_creds=user_creds)
+
+            await callback.message.reply("✅ File can be shared now.")
 
     async def _save_to_google_drive(self, app, message: Message):
         if (user_creds := await self._authenticate_user(message)) is not None:
             try:
                 await self._upload_file_to_google_drive(app, message, user_creds)
             except Exception as e:
-                await message.reply("I can't save it right now. But you can come later and I hope I'll do it.")
+                await message.reply("❌ I can't save it right now. But you can come later and I hope I'll do it.")
                 _logger.error(str(e))
 
         else:
-            await message.reply("Authentication failed.\nTry again later.")
+            await message.reply("❌ Authentication failed.\nTry again later.")
 
     async def start_tg_bot(self):
         await self._bot_client.start()
