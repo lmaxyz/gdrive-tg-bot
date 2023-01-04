@@ -23,6 +23,13 @@ async def handle_auth(request: web.Request):
 
     return web.Response(text="Something went wrong.")
 
+auth_callback_path = '/'
+
+try:
+    auth_callback_path += GAPP_CREDS['redirect_uri'].split('/', 3)[3]
+except IndexError:
+    pass
+
 
 auth_app = web.Application()
-auth_app.add_routes([web.get('/', handle_auth)])
+auth_app.add_routes([web.get(auth_callback_path, handle_auth)])
