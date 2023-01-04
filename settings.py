@@ -8,6 +8,7 @@ dotenv.load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 APP_CLIENT_ID = os.getenv("APP_ID")
 APP_API_HASH = os.getenv("APP_API_HASH")
+BOT_URL = os.getenv("BOT_URL")
 
 SCOPES = [
     'https://www.googleapis.com/auth/drive.file'

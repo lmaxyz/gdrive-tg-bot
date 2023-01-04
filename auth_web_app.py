@@ -3,7 +3,7 @@ import json
 from aiogoogle.excs import HTTPError
 from aiohttp import web
 
-from settings import CREDS
+from settings import CREDS, BOT_URL
 
 
 async def handle_auth(request: web.Request):
@@ -19,9 +19,7 @@ async def handle_auth(request: web.Request):
                 return web.Response(text=str(e))
             else:
                 await db_client.save_user_creds(secret, json.dumps(user_creds))
-                return web.Response(text="Successfully authorized.\n"
-                                         "You can close this page and use bot now.\n"
-                                         "https://t.me/gdrive_books_saver_bot")
+                raise web.HTTPFound(BOT_URL)
 
     return web.Response(text="Something went wrong.")
 
