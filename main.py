@@ -53,4 +53,4 @@ if __name__ == '__main__':
     auth_app.on_cleanup.append(_stop_tg_bot)
     auth_app.on_cleanup.append(_db_disconnect)
 
-    web.run_app(auth_app)
+    web.run_app(auth_app, host='127.0.0.1')
