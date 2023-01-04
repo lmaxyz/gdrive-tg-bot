@@ -16,7 +16,7 @@ from aiogoogle.auth.utils import create_secret
 from aiogoogle.auth.creds import UserCreds
 
 from db import DBClient
-from settings import APP_API_HASH, APP_CLIENT_ID, BOT_TOKEN, CREDS
+from settings import APP_API_HASH, APP_CLIENT_ID, BOT_TOKEN, GAPP_CREDS
 from exceptions import AuthenticationTimeout
 
 
@@ -60,12 +60,12 @@ class BotManager:
             await asyncio.sleep(5.0)
 
     async def _init_authorization(self, message):
-        if self._google_client.oauth2.is_ready(CREDS):
+        if self._google_client.oauth2.is_ready(GAPP_CREDS):
             secret = create_secret()
             await self._db_client.init_auth(message.chat.id, secret)
 
             uri = self._google_client.oauth2.authorization_url(
-                client_creds=CREDS,
+                client_creds=GAPP_CREDS,
                 state=secret,
                 access_type="offline",
                 include_granted_scopes=True,
@@ -102,7 +102,7 @@ class BotManager:
             reply_markup = InlineKeyboardMarkup([
                 [InlineKeyboardButton("View File", url=upload_response['webViewLink'])],
                 [InlineKeyboardButton("Download File", url=upload_response['webContentLink'])],
-                [InlineKeyboardButton("Make File shareable", callback_data=upload_response['id'])]
+                [InlineKeyboardButton("Make File public", callback_data=upload_response['id'])]
             ])
 
             await message.reply(f"✅ File **{file_name}** uploaded successfully.", reply_markup=reply_markup)

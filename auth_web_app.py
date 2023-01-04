@@ -3,7 +3,7 @@ import json
 from aiogoogle.excs import HTTPError
 from aiohttp import web
 
-from settings import CREDS, BOT_URL
+from settings import GAPP_CREDS, BOT_URL
 
 
 async def handle_auth(request: web.Request):
@@ -12,9 +12,9 @@ async def handle_auth(request: web.Request):
 
     if (code := request.query.get("code")) and (secret := request.query.get('state')):
 
-        if await db_client.get_secret(secret) is not None and google_client.oauth2.is_ready(CREDS):
+        if await db_client.get_secret(secret) is not None:
             try:
-                user_creds = await google_client.oauth2.build_user_creds(grant=code, client_creds=CREDS)
+                user_creds = await google_client.oauth2.build_user_creds(grant=code, client_creds=GAPP_CREDS)
             except HTTPError as e:
                 return web.Response(text=str(e))
             else:

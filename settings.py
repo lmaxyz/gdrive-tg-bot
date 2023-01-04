@@ -15,8 +15,8 @@ SCOPES = [
 ]
 
 # Google app credentials
-CREDS = json.load(open("credentials.json", "rb"))["web"]
-CREDS['scopes'] = SCOPES
-CREDS['redirect_uri'] = os.getenv("REDIRECT_URI")
+GAPP_CREDS = json.load(open("credentials.json", "rb"))["web"]
+GAPP_CREDS['scopes'] = SCOPES
+GAPP_CREDS['redirect_uri'] = os.getenv("REDIRECT_URI")
 
 DB_FILE_NAME = 'creds.db'
