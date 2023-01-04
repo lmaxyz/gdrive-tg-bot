@@ -1,6 +1,7 @@
 import logging
 import asyncio
 import time
+import traceback
 
 from pyrogram import Client, filters
 from pyrogram.handlers import MessageHandler, CallbackQueryHandler
@@ -21,6 +22,8 @@ from exceptions import AuthenticationTimeout
 
 
 _logger = logging.getLogger(__name__)
+
+# ToDo: Add refresh user credentials
 
 
 class BotManager:
@@ -120,8 +123,8 @@ class BotManager:
                     )
                     await google.as_user(update_request, user_creds=user_creds)
 
-            except Exception as e:
-                _logger.error(str(e))
+            except Exception:
+                _logger.error(traceback.format_exc())
                 await callback.message.reply("❌ Failed to make file public. Try again later.")
 
             else:
@@ -134,9 +137,9 @@ class BotManager:
         if (user_creds := await self._authenticate_user(message)) is not None:
             try:
                 await self._upload_file_to_google_drive(app, message, user_creds)
-            except Exception as e:
+            except Exception:
                 await message.reply("❌ I can't save it right now. But you can come later and I hope I'll do it.")
-                _logger.error(str(e))
+                _logger.error(traceback.format_exc())
 
         else:
             await message.reply("❌ Authentication failed.\nTry again later.")
