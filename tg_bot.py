@@ -45,6 +45,7 @@ class BotManager:
                     await self._db_client.save_user_creds(json.dumps(user_creds), user_id=message.chat.id)
                 except Exception:
                     _logger.error(traceback.format_exc())
+                    await self._db_client.delete_auth(message.chat.id)
                 else:
                     return user_creds
 
@@ -69,22 +70,21 @@ class BotManager:
             await asyncio.sleep(5.0)
 
     async def _init_authorization(self, message):
-        if self._google_client.oauth2.is_ready(GAPP_CREDS):
-            secret = create_secret()
-            await self._db_client.init_auth(message.chat.id, secret)
+        secret = create_secret()
+        await self._db_client.init_auth(message.chat.id, secret)
 
-            uri = self._google_client.oauth2.authorization_url(
-                client_creds=GAPP_CREDS,
-                state=secret,
-                access_type="offline",
-                include_granted_scopes=True,
-                prompt="select_account",
-            )
-            reply_markup = InlineKeyboardMarkup([[
-                InlineKeyboardButton("Authorize", url=uri),
-            ]])
-            await message.reply("Please authorize in our app with your google account.\nYou have 2 minutes.",
-                                reply_markup=reply_markup)
+        uri = self._google_client.oauth2.authorization_url(
+            client_creds=GAPP_CREDS,
+            state=secret,
+            access_type="offline",
+            include_granted_scopes=True,
+            prompt="select_account",
+        )
+        reply_markup = InlineKeyboardMarkup([[
+            InlineKeyboardButton("Authorize", url=uri),
+        ]])
+        await message.reply("Please authorize in our app with your google account.\nYou have 2 minutes.",
+                            reply_markup=reply_markup)
 
     async def _upload_file_to_google_drive(self, app: Client, message, user_creds: dict):
         file_name = message.document.file_name
