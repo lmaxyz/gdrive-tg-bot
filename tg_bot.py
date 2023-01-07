@@ -48,6 +48,8 @@ class BotManager:
                     await self._db_client.delete_auth(message.chat.id)
                 else:
                     return user_creds
+            else:
+                return user_creds
 
         await self._init_authorization(message)
 
