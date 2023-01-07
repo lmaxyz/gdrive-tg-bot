@@ -40,8 +40,14 @@ class DBClient:
         await self._connection.execute("DELETE FROM creds WHERE user_id=?", (user_id,))
         await self._connection.commit()
 
-    async def save_user_creds(self, secret: str, data: str):
-        await self._connection.execute("UPDATE creds SET data=? WHERE secret=?;", (data, secret))
+    async def save_user_creds(self, data: str, secret: str = None, user_id: int = None):
+        if secret:
+            await self._connection.execute("UPDATE creds SET data=? WHERE secret=?;", (data, secret))
+        elif user_id is not None:
+            await self._connection.execute("UPDATE creds SET data=? WHERE user_id=?;", (data, user_id))
+        else:
+            raise ValueError("`secret` or `user_id` must be given to save credentials.")
+
         await self._connection.commit()
 
     async def get_secret(self, secret: str) -> str:
@@ -49,7 +55,7 @@ class DBClient:
 
         if (result := await cursor.fetchone()) is not None:
             return result[0]
-        print(result)
+
         return None
 
     async def get_user_creds(self, user_id: int) -> dict:

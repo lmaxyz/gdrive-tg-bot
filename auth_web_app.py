@@ -18,7 +18,7 @@ async def handle_auth(request: web.Request):
             except HTTPError as e:
                 return web.Response(text=str(e))
             else:
-                await db_client.save_user_creds(secret, json.dumps(user_creds))
+                await db_client.save_user_creds(json.dumps(user_creds), secret=secret)
                 raise web.HTTPFound(BOT_URL)
 
     return web.Response(text="Something went wrong.")

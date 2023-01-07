@@ -2,6 +2,7 @@ import logging
 import asyncio
 import time
 import traceback
+import json
 
 from pyrogram import Client, filters
 from pyrogram.handlers import MessageHandler, CallbackQueryHandler
@@ -23,8 +24,6 @@ from exceptions import AuthenticationTimeout
 
 _logger = logging.getLogger(__name__)
 
-# ToDo: Add refresh user credentials
-
 
 class BotManager:
     def __init__(self, db_client: DBClient, google_client: Aiogoogle):
@@ -40,7 +39,14 @@ class BotManager:
 
     async def _authenticate_user(self, message):
         if (user_creds := await self._db_client.get_user_creds(message.chat.id)) is not None:
-            return user_creds
+            if self._google_client.oauth2.is_expired(user_creds):
+                try:
+                    user_creds = await self._google_client.oauth2.refresh(user_creds)
+                    await self._db_client.save_user_creds(json.dumps(user_creds), user_id=message.chat.id)
+                except Exception:
+                    _logger.error(traceback.format_exc())
+                else:
+                    return user_creds
 
         await self._init_authorization(message)
 
