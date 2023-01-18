@@ -6,6 +6,9 @@ from aiohttp import web
 
 from settings import G_APP_CREDS, BOT_URL
 
+from .startup import startup_actions
+from .cleanup import cleanup_actions
+
 
 _logger = logging.getLogger("GoogleAuthWebApp")
 
@@ -21,7 +24,6 @@ async def handle_auth(request: web.Request):
                 user_creds = await google_client.oauth2.build_user_creds(grant=code, client_creds=G_APP_CREDS)
             except HTTPError as e:
                 _logger.error(str(e))
-                return web.Response(text="Something went wrong.")
             else:
                 await db_client.save_user_creds(json.dumps(user_creds), secret=secret)
                 raise web.HTTPFound(BOT_URL)
@@ -38,3 +40,6 @@ except IndexError:
 
 auth_app = web.Application()
 auth_app.add_routes([web.get(auth_callback_path, handle_auth)])
+
+auth_app.on_startup.extend(startup_actions)
+auth_app.on_cleanup.extend(cleanup_actions)

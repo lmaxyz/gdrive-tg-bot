@@ -17,7 +17,7 @@ from aiogoogle import Aiogoogle
 from aiogoogle.auth.utils import create_secret
 from aiogoogle.auth.creds import UserCreds
 
-from db import DBClient
+from core.db import DBClient
 from settings import APP_API_HASH, APP_CLIENT_ID, BOT_TOKEN, G_APP_CREDS
 from core.exceptions import AuthenticationTimeout
 
