@@ -62,7 +62,7 @@ class DBClient:
         await self._connection.execute("SELECT saving_dir FROM user_settings WHERE user_id=?", (user_id,))
 
     async def is_secret_exists(self, secret: str) -> bool:
-        cursor = await self._connection.execute("SELECT 1 FROM creds WHERE secret=?;", (secret,))
+        cursor = await self._connection.execute("SELECT 1 FROM user_settings WHERE secret=?;", (secret,))
         return await cursor.fetchone() is not None
 
     async def get_user_creds(self, user_id: int) -> dict:
