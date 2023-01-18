@@ -59,6 +59,7 @@ class BotManager:
             return await self._wait_for_authorization(message)
         except AuthorizationTimeout:
             await self._db_client.delete_auth(message.chat.id)
+            await message.reply("Authorization error: time is out.")
             return None
 
     async def _wait_for_authorization(self, message, timeout: float = 120.0):
@@ -69,7 +70,7 @@ class BotManager:
                 return user_creds
 
             if time.time() - start_time >= timeout:
-                raise AuthenticationTimeout("Authentication haven't done.")
+                raise AuthorizationTimeout("Authorization haven't done.")
 
             await asyncio.sleep(5.0)
 
