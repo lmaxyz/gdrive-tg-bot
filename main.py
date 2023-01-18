@@ -4,14 +4,14 @@ import logging
 from aiohttp import web
 from aiogoogle import Aiogoogle
 
-from settings import DB_FILE_NAME, APP_API_HASH, APP_CLIENT_ID, BOT_TOKEN, GAPP_CREDS
+from settings import DB_FILE_NAME, APP_API_HASH, APP_CLIENT_ID, BOT_TOKEN, G_APP_CREDS
 
-from tg_bot import BotManager
-from auth_web_app import auth_app
-from db import DBClient
+from core.tg_bot import BotManager
+from core.web_app import auth_app
+from core.db import DBClient
 
 
-logger = logging.getLogger('GDriveSavingBotMain')
+logger = logging.getLogger('GDriveManagerBotMain')
 
 
 async def _db_connect(application: web.Application):
@@ -23,9 +23,9 @@ async def _db_disconnect(application: web.Application):
 
 
 async def _init_google_client(application: web.Application):
-    google_client = Aiogoogle(client_creds=GAPP_CREDS)
+    google_client = Aiogoogle(client_creds=G_APP_CREDS)
 
-    if not google_client.oauth2.is_ready(GAPP_CREDS):
+    if not google_client.oauth2.is_ready(G_APP_CREDS):
         raise ValueError("Bad google app credentials.")
 
     application['google_client'] = google_client

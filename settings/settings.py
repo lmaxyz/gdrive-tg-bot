@@ -1,9 +1,12 @@
 import os
 import json
 import dotenv
+from pathlib import Path
 
 dotenv.load_dotenv()
 
+
+BASE_DIR = Path(__name__).absolute().parent.parent
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 APP_CLIENT_ID = os.getenv("APP_ID")
@@ -15,8 +18,9 @@ SCOPES = [
 ]
 
 # Google app credentials
-GAPP_CREDS = json.load(open("credentials.json", "rb"))["web"]
-GAPP_CREDS['scopes'] = SCOPES
-GAPP_CREDS['redirect_uri'] = os.getenv("REDIRECT_URI")
+_CREDS_PATH = str(BASE_DIR / "settings" / "credentials.json")
+G_APP_CREDS = json.load(open(_CREDS_PATH, "rb"))["web"]
+G_APP_CREDS['scopes'] = SCOPES
+G_APP_CREDS['redirect_uri'] = os.getenv("REDIRECT_URI")
 
 DB_FILE_NAME = 'creds.db'

@@ -1,9 +1,13 @@
 import json
+import logging
 
 from aiogoogle.excs import HTTPError
 from aiohttp import web
 
-from settings import GAPP_CREDS, BOT_URL
+from settings import G_APP_CREDS, BOT_URL
+
+
+_logger = logging.getLogger("GoogleAuthWebApp")
 
 
 async def handle_auth(request: web.Request):
@@ -14,9 +18,10 @@ async def handle_auth(request: web.Request):
 
         if await db_client.get_secret(secret) is not None:
             try:
-                user_creds = await google_client.oauth2.build_user_creds(grant=code, client_creds=GAPP_CREDS)
+                user_creds = await google_client.oauth2.build_user_creds(grant=code, client_creds=G_APP_CREDS)
             except HTTPError as e:
-                return web.Response(text=str(e))
+                _logger.error(str(e))
+                return web.Response(text="Something went wrong.")
             else:
                 await db_client.save_user_creds(json.dumps(user_creds), secret=secret)
                 raise web.HTTPFound(BOT_URL)
@@ -27,7 +32,7 @@ async def handle_auth(request: web.Request):
 auth_callback_path = '/'
 
 try:
-    auth_callback_path += GAPP_CREDS['redirect_uri'].split('/', 3)[3]
+    auth_callback_path += G_APP_CREDS['redirect_uri'].split('/', 3)[3]
 except IndexError:
     pass
 

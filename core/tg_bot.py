@@ -18,8 +18,8 @@ from aiogoogle.auth.utils import create_secret
 from aiogoogle.auth.creds import UserCreds
 
 from db import DBClient
-from settings import APP_API_HASH, APP_CLIENT_ID, BOT_TOKEN, GAPP_CREDS
-from exceptions import AuthenticationTimeout
+from settings import APP_API_HASH, APP_CLIENT_ID, BOT_TOKEN, G_APP_CREDS
+from core.exceptions import AuthenticationTimeout
 
 
 _logger = logging.getLogger(__name__)
@@ -76,7 +76,7 @@ class BotManager:
         await self._db_client.init_auth(message.chat.id, secret)
 
         uri = self._google_client.oauth2.authorization_url(
-            client_creds=GAPP_CREDS,
+            client_creds=G_APP_CREDS,
             state=secret,
             access_type="offline",
             include_granted_scopes=True,
