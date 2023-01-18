@@ -19,7 +19,7 @@ async def handle_auth(request: web.Request):
 
     if (code := request.query.get("code")) and (secret := request.query.get('state')):
 
-        if await db_client.get_secret(secret) is not None:
+        if await db_client.is_secret_exists(secret):
             try:
                 user_creds = await google_client.oauth2.build_user_creds(grant=code, client_creds=G_APP_CREDS)
             except HTTPError as e:

@@ -59,7 +59,6 @@ class BotManager:
             return await self._wait_for_authorization(message)
         except AuthorizationTimeout:
             await self._db_client.delete_auth(message.chat.id)
-            await message.reply("Authorization error: time is out.")
             return None
 
     async def _wait_for_authorization(self, message, timeout: float = 120.0):
