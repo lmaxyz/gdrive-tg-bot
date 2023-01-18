@@ -1,4 +1,4 @@
 
 
-class AuthenticationTimeout(Exception):
+class AuthorizationTimeout(Exception):
     pass

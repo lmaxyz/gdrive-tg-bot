@@ -21,7 +21,7 @@ from aiogoogle.auth.creds import UserCreds
 from settings import APP_API_HASH, APP_CLIENT_ID, BOT_TOKEN, G_APP_CREDS
 
 from core.db import DBClient
-from core.exceptions import AuthenticationTimeout
+from core.exceptions import AuthorizationTimeout
 
 
 _logger = logging.getLogger(__name__)
@@ -57,7 +57,7 @@ class BotManager:
 
         try:
             return await self._wait_for_authorization(message)
-        except AuthenticationTimeout:
+        except AuthorizationTimeout:
             await self._db_client.delete_auth(message.chat.id)
             return None
 
