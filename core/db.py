@@ -54,12 +54,14 @@ class DBClient:
 
         await self._connection.commit()
 
-    async def set_saving_dir(self, user_id: int, saving_dir: str):
-        await self._connection.execute("UPDATE user_settings SET saving_dir=? WHERE user_id=?", (saving_dir, user_id))
+    async def set_saving_folder_id(self, user_id: int, folder_id: str):
+        await self._connection.execute("UPDATE user_settings SET saving_dir=? WHERE user_id=?", (folder_id, user_id))
         await self._connection.commit()
 
-    async def get_saving_dir(self, user_id: int) -> str:
-        await self._connection.execute("SELECT saving_dir FROM user_settings WHERE user_id=?", (user_id,))
+    async def get_saving_folder_id(self, user_id: int) -> str:
+        cursor = await self._connection.execute("SELECT saving_dir FROM user_settings WHERE user_id=?", (user_id,))
+        if (result := await cursor.fetchone()) is not None:
+            return result[0]
 
     async def is_secret_exists(self, secret: str) -> bool:
         cursor = await self._connection.execute("SELECT 1 FROM user_settings WHERE secret=?;", (secret,))
@@ -70,5 +72,3 @@ class DBClient:
 
         if (result := await cursor.fetchone()) is not None and result[0] is not None:
             return json.loads(result[0])
-
-        return None

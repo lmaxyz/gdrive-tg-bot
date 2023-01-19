@@ -7,6 +7,7 @@ class GDriveClient:
         self._db_client = db_client
 
     async def upload_file(self, file, file_name, mime_type, user_creds):
+        target_folder = self._db_client.get_saving_folder_id()
         async with self._google_client as google:
             drive_v3 = await google.discover('drive', 'v3')
 
@@ -31,3 +32,17 @@ class GDriveClient:
                 json={'type': 'anyone', 'role': 'reader'}
             )
             await google.as_user(update_request, user_creds=user_creds)
+
+    async def get_folder_id(self, folder_name: str, user_creds) -> str:
+        async with self._google_client as google:
+            drive = await google.discover('drive', 'v3')
+            request = drive.files.list(q=f"mimeType='application/vnd.google-apps.folder' and name='{folder_name}'")
+            found_folders = await google.as_user(request, user_creds=UserCreds(**user_creds))
+
+        if found_folders := found_folders['files']:
+            return found_folders[0]['id']
+
+        return None
+
+    async def create_folder(self, folder_name: str, user_creds):
+        pass
