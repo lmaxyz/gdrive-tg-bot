@@ -33,7 +33,7 @@ class DBClient:
 
     async def init_auth(self, user_id: int, secret: str):
         try:
-            await self._connection.execute("INSERT INTO user_settings VALUES (?,?, NULL);", (user_id, secret))
+            await self._connection.execute("INSERT INTO user_settings VALUES (?,?, NULL, NULL);", (user_id, secret))
         except sqlite3.IntegrityError as e:
             if "UNIQUE" in str(e):
                 await self._connection.execute("UPDATE user_settings SET secret=? WHERE user_id=?", (secret, user_id))

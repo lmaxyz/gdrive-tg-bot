@@ -1,8 +1,5 @@
 import logging
-import asyncio
-import time
 import traceback
-import json
 
 from pyrogram import Client, filters
 from pyrogram.handlers import MessageHandler, CallbackQueryHandler
@@ -14,86 +11,51 @@ from pyrogram.types import (
 )
 
 from aiogoogle import Aiogoogle
-from aiogoogle.auth.utils import create_secret
 from aiogoogle.auth.creds import UserCreds
 
 
-from settings import APP_API_HASH, APP_CLIENT_ID, BOT_TOKEN, G_APP_CREDS
+from settings import APP_API_HASH, APP_CLIENT_ID, BOT_TOKEN
 
 from core.db import DBClient
-from core.exceptions import AuthorizationTimeout
+from core.google.auth import GoogleAuthenticator
+
+from .decorators import with_user_authentication
+from .types import HandlerType
 
 
 _logger = logging.getLogger(__name__)
 
 
 class BotManager:
+    _AUTHORIZATION_MESSAGE = "Please authorize in our app with your google account.\nYou have 2 minutes."
+
     def __init__(self, db_client: DBClient, google_client: Aiogoogle):
         self._bot_client = Client("gdrive_tg_bot", APP_CLIENT_ID, APP_API_HASH, bot_token=BOT_TOKEN)
-        self._google_client = google_client
         self._db_client = db_client
 
+        self._google_client = google_client
+        self._authenticator = GoogleAuthenticator(self, self._db_client, self._google_client)
+
         self.__register_handlers()
+
+    @property
+    def authenticator(self):
+        return self._authenticator
 
     def __register_handlers(self):
         self._bot_client.add_handler(MessageHandler(self._save_to_google_drive, filters.media))
         self._bot_client.add_handler(CallbackQueryHandler(self._make_file_public))
 
-    async def _authenticate_user(self, message):
-        if (user_creds := await self._db_client.get_user_creds(message.chat.id)) is not None:
-            if self._google_client.oauth2.is_expired(user_creds):
-                try:
-                    user_creds = await self._google_client.oauth2.refresh(user_creds)
-                    await self._db_client.save_user_creds(json.dumps(user_creds), user_id=message.chat.id)
-                except Exception:
-                    _logger.error(traceback.format_exc())
-                    await self._db_client.delete_auth(message.chat.id)
-                else:
-                    return user_creds
-            else:
-                return user_creds
-
-        await self._init_authorization(message)
-
-        try:
-            return await self._wait_for_authorization(message)
-        except AuthorizationTimeout:
-            await self._db_client.delete_auth(message.chat.id)
-            return None
-
-    async def _wait_for_authorization(self, message, timeout: float = 120.0):
-        start_time = time.time()
-
-        while True:
-            if (user_creds := await self._db_client.get_user_creds(message.chat.id)) is not None:
-                return user_creds
-
-            if time.time() - start_time >= timeout:
-                raise AuthorizationTimeout("Authorization haven't done.")
-
-            await asyncio.sleep(5.0)
-
-    async def _init_authorization(self, message):
-        secret = create_secret()
-        await self._db_client.init_auth(message.chat.id, secret)
-
-        uri = self._google_client.oauth2.authorization_url(
-            client_creds=G_APP_CREDS,
-            state=secret,
-            access_type="offline",
-            include_granted_scopes=True,
-            prompt="select_account",
-        )
+    async def send_authorization_request(self, user_id, authorization_url):
         reply_markup = InlineKeyboardMarkup([[
-            InlineKeyboardButton("Authorize", url=uri),
+            InlineKeyboardButton("Authorize", url=authorization_url),
         ]])
-        await message.reply("Please authorize in our app with your google account.\nYou have 2 minutes.",
-                            reply_markup=reply_markup)
+        await self._bot_client.send_message(user_id, self._AUTHORIZATION_MESSAGE, reply_markup=reply_markup)
 
+    @with_user_authentication(HandlerType.Message)
     async def _upload_file_to_google_drive(self, app: Client, message, user_creds: dict):
         file_name = message.document.file_name
         _logger.info(f"[+] Start downloading '{file_name}'")
-
         file = await app.download_media(message.document.file_id, in_memory=True)
 
         metadata = {
@@ -120,39 +82,32 @@ class BotManager:
 
             await message.reply(f"✅ File **{file_name}** uploaded successfully.", reply_markup=reply_markup)
 
-    async def _make_file_public(self, _app, callback: CallbackQuery):
+    @with_user_authentication(HandlerType.Callback)
+    async def _make_file_public(self, _app, callback: CallbackQuery, user_creds: dict):
         file_id = callback.data
 
-        if (user_creds := await self._authenticate_user(callback.message)) is not None:
-            try:
-                async with self._google_client as google:
-                    drive_v3 = await google.discover('drive', 'v3')
-                    update_request = drive_v3.permissions.create(
-                        fileId=file_id,
-                        json={'type': 'anyone', 'role': 'reader'}
-                    )
-                    await google.as_user(update_request, user_creds=user_creds)
+        try:
+            async with self._google_client as google:
+                drive_v3 = await google.discover('drive', 'v3')
+                update_request = drive_v3.permissions.create(
+                    fileId=file_id,
+                    json={'type': 'anyone', 'role': 'reader'}
+                )
+                await google.as_user(update_request, user_creds=user_creds)
 
-            except Exception:
-                _logger.error(traceback.format_exc())
-                await callback.message.reply("❌ Failed to make file public. Try again later.")
-
-            else:
-                await callback.message.reply("🚀 File can be shared now.")
+        except Exception:
+            _logger.error(traceback.format_exc())
+            await callback.message.reply("❌ Failed to make file public. Try again later.")
 
         else:
-            await callback.message.reply("❌ Authentication failed.\nTry again later.")
+            await callback.message.reply("🚀 File can be shared now.")
 
     async def _save_to_google_drive(self, app, message: Message):
-        if (user_creds := await self._authenticate_user(message)) is not None:
-            try:
-                await self._upload_file_to_google_drive(app, message, user_creds)
-            except Exception:
-                await message.reply("❌ I can't save it right now. But you can come later and I hope I'll do it.")
-                _logger.error(traceback.format_exc())
-
-        else:
-            await message.reply("❌ Authentication failed.\nTry again later.")
+        try:
+            await self._upload_file_to_google_drive(app, message)
+        except Exception:
+            await message.reply("❌ I can't save it right now. But you can come later and I hope I'll do it.")
+            _logger.error(traceback.format_exc())
 
     async def start_tg_bot(self):
         await self._bot_client.start()
