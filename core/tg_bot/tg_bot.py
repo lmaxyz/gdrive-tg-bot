@@ -11,13 +11,12 @@ from pyrogram.types import (
 )
 
 from aiogoogle import Aiogoogle
-from aiogoogle.auth.creds import UserCreds
-
 
 from settings import APP_API_HASH, APP_CLIENT_ID, BOT_TOKEN
 
 from core.db import DBClient
 from core.google.auth import GoogleAuthenticator
+from core.google.drive import GDriveClient
 
 from .decorators import with_user_authentication
 from .types import HandlerType
@@ -35,6 +34,7 @@ class BotManager:
 
         self._google_client = google_client
         self._authenticator = GoogleAuthenticator(self, self._db_client, self._google_client)
+        self._gdrive_client = GDriveClient(self._google_client, self._db_client)
 
         self.__register_handlers()
 
@@ -52,55 +52,37 @@ class BotManager:
         ]])
         await self._bot_client.send_message(user_id, self._AUTHORIZATION_MESSAGE, reply_markup=reply_markup)
 
+    async def _download_file(self, file_id):
+        file = await self._bot_client.download_media(file_id, in_memory=True)
+        return _CustomFileBuffer(file.getbuffer())
+
     @with_user_authentication(HandlerType.Message)
-    async def _upload_file_to_google_drive(self, app: Client, message, user_creds: dict):
+    async def _upload_file_to_google_drive(self, _app: Client, message, user_creds: dict):
         file_name = message.document.file_name
         _logger.info(f"[+] Start downloading '{file_name}'")
-        file = await app.download_media(message.document.file_id, in_memory=True)
+        file = await self._download_file(message.document.file_id)
 
-        metadata = {
-            'name': file_name,
-            'mimeType': message.document.mime_type
-        }
+        upload_response = await self._gdrive_client.upload_file(file, file_name, message.document.mime_type, user_creds)
 
-        async with self._google_client as google:
-            drive_v3 = await google.discover('drive', 'v3')
+        reply_markup = InlineKeyboardMarkup([
+            [InlineKeyboardButton("View File", url=upload_response['webViewLink'])],
+            [InlineKeyboardButton("Download File", url=upload_response['webContentLink'])],
+            [InlineKeyboardButton("Make File public", callback_data=upload_response['id'])]
+        ])
 
-            upload_request = drive_v3.files.create(
-                pipe_from=_CustomFileBuffer(file.getbuffer()),
-                json=metadata,
-                fields='id,name,webContentLink,webViewLink'
-            )
-
-            upload_response = await google.as_user(upload_request, user_creds=UserCreds(**user_creds))
-
-            reply_markup = InlineKeyboardMarkup([
-                [InlineKeyboardButton("View File", url=upload_response['webViewLink'])],
-                [InlineKeyboardButton("Download File", url=upload_response['webContentLink'])],
-                [InlineKeyboardButton("Make File public", callback_data=upload_response['id'])]
-            ])
-
-            await message.reply(f"✅ File **{file_name}** uploaded successfully.", reply_markup=reply_markup)
+        await message.reply(f"✅ File **{file_name}** uploaded successfully.", reply_markup=reply_markup)
 
     @with_user_authentication(HandlerType.Callback)
     async def _make_file_public(self, _app, callback: CallbackQuery, user_creds: dict):
-        file_id = callback.data
-
         try:
-            async with self._google_client as google:
-                drive_v3 = await google.discover('drive', 'v3')
-                update_request = drive_v3.permissions.create(
-                    fileId=file_id,
-                    json={'type': 'anyone', 'role': 'reader'}
-                )
-                await google.as_user(update_request, user_creds=user_creds)
+            await self._gdrive_client.make_file_public(callback.data, user_creds)
 
         except Exception:
             _logger.error(traceback.format_exc())
             await callback.message.reply("❌ Failed to make file public. Try again later.")
 
         else:
-            await callback.message.reply("🚀 File can be shared now.")
+            await callback.answer("🚀 File can be shared now.")
 
     async def _save_to_google_drive(self, app, message: Message):
         try:
