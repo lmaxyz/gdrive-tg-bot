@@ -20,6 +20,7 @@ from core.google.drive import GDriveClient
 
 from .decorators import with_user_authentication
 from .types import HandlerType
+from .downloading import DownloadManager
 
 
 _logger = logging.getLogger(__name__)
@@ -46,6 +47,7 @@ class BotManager:
     def __register_handlers(self):
         self._bot_client.add_handler(MessageHandler(self._save_to_google_drive, filters.media))
         self._bot_client.add_handler(MessageHandler(self._set_saving_folder, filters.command("set_saving_folder")))
+        self._bot_client.add_handler(MessageHandler(self._create_folder, filters.command("create_folder")))
         self._bot_client.add_handler(CallbackQueryHandler(self._make_file_public))
 
     async def send_authorization_request(self, user_id, authorization_url):
@@ -54,17 +56,19 @@ class BotManager:
         ]])
         await self._bot_client.send_message(user_id, self._AUTHORIZATION_MESSAGE, reply_markup=reply_markup)
 
-    async def _download_file(self, file_id):
-        file = await self._bot_client.download_media(file_id, in_memory=True)
-        return _CustomFileBuffer(file.getbuffer())
-
     @with_user_authentication(HandlerType.Message)
-    async def _upload_file_to_google_drive(self, _app: Client, message, user_creds: dict):
+    async def _upload_file_to_google_drive(self, _app: Client, message: Message, user_creds: dict):
         file_name = message.document.file_name
         _logger.info(f"[+] Start downloading '{file_name}'")
-        file = await self._download_file(message.document.file_id)
+        process_message = await message.reply("Start file downloading...")
 
-        upload_response = await self._gdrive_client.upload_file(file, file_name, message.document.mime_type, user_creds)
+        download_manager = DownloadManager(self._bot_client, process_message)
+        file = await download_manager.download_file(message.document.file_id, message.document.file_size)
+        target_folder_id = await self._db_client.get_saving_folder_id(message.from_user.id)
+
+        await process_message.edit_text("Uploading to Google Drive...")
+        upload_response = await self._gdrive_client.upload_file(file, file_name, message.document.mime_type, user_creds,
+                                                                target_folder_id)
 
         reply_markup = InlineKeyboardMarkup([
             [InlineKeyboardButton("View File", url=upload_response['webViewLink'])],
@@ -72,35 +76,38 @@ class BotManager:
             [InlineKeyboardButton("Make File public", callback_data=upload_response['id'])]
         ])
 
-        await message.reply(f"✅ File **{file_name}** uploaded successfully.", reply_markup=reply_markup)
+        await process_message.edit_text(f"✅ File **{file_name}** uploaded successfully.",
+                                        reply_markup=reply_markup)
 
     @with_user_authentication(HandlerType.Message)
     async def _set_saving_folder(self, _app, message: Message, user_creds):
         try:
             folder_name = message.text.split()[1]
         except IndexError:
-            await message.reply("You have to send this command with directory name.\n"
-                                "Example: `/set_saving_folder {folder_name}`")
+            await message.reply("❌ You have to send this command with folder name.\n"
+                                "  Example: `/set_saving_folder {folder_name}`")
 
         else:
             if (folder_id := await self._gdrive_client.get_folder_id(folder_name, user_creds)) is not None:
                 await self._db_client.set_saving_folder_id(message.from_user.id, folder_id)
-                await message.reply(f"Your saving folder was changed to {folder_name}")
+                await message.reply(f"✅ Saving folder is changed to {folder_name}")
             else:
-                await message.reply("Folder doesn't exists.\n"
-                                    "Try to create new one with the next command: /create_folder {folder_name}")
+                await message.reply("❌ Folder doesn't exists.\n"
+                                    "  Try to create new one with the next command: `/create_folder {folder_name}`")
 
     @with_user_authentication(HandlerType.Message)
     async def _create_folder(self, _app, message, user_creds):
         try:
             folder_name = message.text.split()[1]
         except IndexError:
-            await message.reply("You have to send this command with folder name.\n"
-                                "Example: `/create_folder {folder_name}`")
-
+            await message.reply("❌ You have to send this command with folder name.\n"
+                                "  Example: `/create_folder {folder_name}`")
         else:
-            await self._gdrive_client.create_folder(folder_name, user_creds)
-            await message.reply(f"Folder {folder_name} was created successfully.")
+            parent_folder = await self._db_client.get_saving_folder_id(message.from_user.id)
+            if (folder_id := await self._gdrive_client.create_folder(folder_name, user_creds, parent_folder)) is not None:
+                await message.reply(f"✅ Folder `{folder_name}` successfully created.")
+            else:
+                await message.reply("❌ Can't create folder `{folder_name}` right now.")
 
     @with_user_authentication(HandlerType.Callback)
     async def _make_file_public(self, _app, callback: CallbackQuery, user_creds: dict):
@@ -133,13 +140,3 @@ class BotManager:
         await self._bot_client.stop()
 
         _logger.debug('[+] Stopped.')
-
-
-class _CustomFileBuffer:
-    _mem_link = None
-
-    def __init__(self, mem_link):
-        self._mem_link = mem_link
-
-    def read(self):
-        return bytes(self._mem_link)
