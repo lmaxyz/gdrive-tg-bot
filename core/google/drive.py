@@ -1,3 +1,5 @@
+from typing import Union
+
 from aiogoogle.auth.creds import UserCreds
 from aiogoogle.excs import HTTPError
 
@@ -9,13 +11,13 @@ class GDriveClient:
         self._google_client = google_client
         self._db_client = db_client
 
-    async def upload_file(self, file, file_name, mime_type, user_creds, parent_folder_id=None):
+    async def upload_file(self, file, user_creds, parent_folder_id=None):
         async with self._google_client as google:
             drive_v3 = await google.discover('drive', 'v3')
 
             metadata = {
-                'name': file_name,
-                'mimeType': mime_type
+                'name': file.name,
+                'mimeType': file.mime_type
             }
 
             if parent_folder_id is not None:
@@ -36,8 +38,12 @@ class GDriveClient:
                 fileId=file_id,
                 json={'type': 'anyone', 'role': 'reader'}
             )
-            await google.as_user(update_request, user_creds=user_creds)
-            # ToDo: Add result returning
+            try:
+                await google.as_user(update_request, user_creds=user_creds)
+            except HTTPError:
+                return False
+            else:
+                return True
 
     async def get_folder_id(self, folder_name: str, user_creds) -> str:
         async with self._google_client as google:
@@ -48,7 +54,7 @@ class GDriveClient:
         if found_folders := found_folders['files']:
             return found_folders[0]['id']
 
-    async def create_folder(self, folder_name: str, user_creds, parent_folder=None) -> str:
+    async def create_folder(self, folder_name: str, user_creds, parent_folder=None) -> Union[str, None]:
         async with self._google_client as google:
             drive = await google.discover('drive', 'v3')
 
@@ -67,4 +73,3 @@ class GDriveClient:
                 return None
             else:
                 return result.get('id')
-

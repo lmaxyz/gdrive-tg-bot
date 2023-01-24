@@ -6,8 +6,8 @@ from pyrogram.handlers import MessageHandler, CallbackQueryHandler
 from pyrogram.types import (
     InlineKeyboardMarkup,
     InlineKeyboardButton,
-    Message,
     CallbackQuery,
+    Message,
 )
 
 from aiogoogle import Aiogoogle
@@ -20,7 +20,6 @@ from core.google.drive import GDriveClient
 
 from .decorators import with_user_authentication
 from .types import HandlerType
-from .downloading import DownloadManager
 
 
 _logger = logging.getLogger(__name__)
@@ -62,13 +61,16 @@ class BotManager:
         _logger.info(f"[+] Start downloading '{file_name}'")
         process_message = await message.reply("Start file downloading...")
 
-        download_manager = DownloadManager(self._bot_client, process_message)
-        file = await download_manager.download_file(message.document.file_id, message.document.file_size)
-        target_folder_id = await self._db_client.get_saving_folder_id(message.from_user.id)
+        file = await self._bot_client.download_media(message.document, in_memory=True, progress_args=(process_message,),
+                                                     progress=_update_downloading_progress)
+        parent_folder_id = await self._db_client.get_saving_folder_id(message.from_user.id)
 
         await process_message.edit_text("Uploading to Google Drive...")
-        upload_response = await self._gdrive_client.upload_file(file, file_name, message.document.mime_type, user_creds,
-                                                                target_folder_id)
+        upload_response = await self._gdrive_client.upload_file(
+            InMemoryFile(file_name, message.document.mime_type, file.getbuffer()),
+            user_creds,
+            parent_folder_id
+        )
 
         reply_markup = InlineKeyboardMarkup([
             [InlineKeyboardButton("View File", url=upload_response['webViewLink'])],
@@ -107,7 +109,7 @@ class BotManager:
             if (folder_id := await self._gdrive_client.create_folder(folder_name, user_creds, parent_folder)) is not None:
                 await message.reply(f"✅ Folder `{folder_name}` successfully created.")
             else:
-                await message.reply("❌ Can't create folder `{folder_name}` right now.")
+                await message.reply(f"❌ Can't create folder `{folder_name}` right now.")
 
     @with_user_authentication(HandlerType.Callback)
     async def _make_file_public(self, _app, callback: CallbackQuery, user_creds: dict):
@@ -140,3 +142,25 @@ class BotManager:
         await self._bot_client.stop()
 
         _logger.debug('[+] Stopped.')
+
+
+class InMemoryFile:
+    def __init__(self, name, mime_type, mem_link):
+        self._name = name
+        self._mime_type = mime_type
+        self._mem_link = mem_link
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def mime_type(self):
+        return self._mime_type
+
+    def read(self):
+        return bytes(self._mem_link)
+
+
+async def _update_downloading_progress(current, total, progress_tracking_message):
+    await progress_tracking_message.edit_text(f"Downloading from Telegram...\n**{current * 100 / total:.1f}%**")
