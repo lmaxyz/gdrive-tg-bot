@@ -57,5 +57,5 @@ class GoogleAuthenticator:
             state=secret,
             access_type="offline",
             include_granted_scopes=True,
-            prompt="select_account%20consent",
+            prompt="select_account consent",
         )
