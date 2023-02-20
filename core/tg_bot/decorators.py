@@ -10,7 +10,9 @@ def with_user_authentication(handler_type: HandlerType):
         async def with_auth(bot_manager, tg_app, message_or_callback):
             user_id = message_or_callback.from_user.id
             if (user_creds := await bot_manager.authenticator.authenticate_user(user_id)) is None:
-                user_creds = await bot_manager.authenticator.start_authorization(message_or_callback.from_user.id)
+                auth_url = bot_manager.authenticator.get_authorization_url(user_id)
+                await bot_manager.send_authorization_request(user_id, auth_url)
+                user_creds = await bot_manager.authenticator.wait_for_authorization(user_id)
 
             if user_creds is not None:
                 await handler(bot_manager, tg_app, message_or_callback, user_creds)

@@ -35,16 +35,7 @@ class GoogleAuthenticator:
 
         return None
 
-    async def start_authorization(self, user_id) -> dict:
-        await self._init_authorization(user_id)
-
-        try:
-            return await self._wait_for_authorization(user_id)
-        except AuthorizationTimeout:
-            await self._db_client.delete_auth(user_id)
-            return None
-
-    async def _wait_for_authorization(self, user_id, timeout: float = 120.0) -> dict:
+    async def wait_for_authorization(self, user_id, timeout: float = 120.0) -> dict:
         start_time = time.time()
 
         while True:
@@ -52,19 +43,19 @@ class GoogleAuthenticator:
                 return user_creds
 
             if time.time() - start_time >= timeout:
+                await self._db_client.delete_auth(user_id)
                 raise AuthorizationTimeout("Authorization haven't done.")
 
             await asyncio.sleep(5.0)
 
-    async def _init_authorization(self, user_id):
+    async def get_authorization_url(self, user_id) -> str:
         secret = create_secret()
         await self._db_client.init_auth(user_id, secret)
 
-        url = self._google_client.oauth2.authorization_url(
+        return self._google_client.oauth2.authorization_url(
             client_creds=G_APP_CREDS,
             state=secret,
             access_type="offline",
             include_granted_scopes=True,
             prompt="select_account%20consent",
         )
-        await self._bot_manager.send_authorization_request(user_id, url)

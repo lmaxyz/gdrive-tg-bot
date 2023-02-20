@@ -4,7 +4,7 @@ from aiogoogle.auth.creds import UserCreds
 from aiogoogle.excs import HTTPError
 
 
-class GDriveClient:
+class GoogleDrive:
     _FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder'
 
     def __init__(self, google_client, db_client):
