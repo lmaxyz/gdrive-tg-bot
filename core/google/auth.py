@@ -65,6 +65,6 @@ class GoogleAuthenticator:
             state=secret,
             access_type="offline",
             include_granted_scopes=True,
-            prompt="select_account",
+            prompt="select_account%20consent",
         )
         await self._bot_manager.send_authorization_request(user_id, url)
