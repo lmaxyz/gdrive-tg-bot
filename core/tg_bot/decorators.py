@@ -3,6 +3,7 @@ from .types import HandlerType
 _AUTHENTICATION_FAILURE_MESSAGE = "❌ Authentication failed.\nTry again later."
 
 
+# ToDo: Replace it to bot middleware
 def with_user_authentication(handler_type: HandlerType):
     auth_fail_reply = _auth_fail_replies_map[handler_type]
 

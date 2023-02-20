@@ -16,7 +16,7 @@ from settings import APP_API_HASH, APP_CLIENT_ID, BOT_TOKEN
 
 from core.db import DBClient
 from core.google.auth import GoogleAuthenticator
-from core.google.drive import GDriveClient
+from core.google.drive import GoogleDrive
 
 from .decorators import with_user_authentication
 from .types import HandlerType
@@ -35,7 +35,7 @@ class BotManager:
 
         self._google_client = google_client
         self._authenticator = GoogleAuthenticator(self, self._db_client, self._google_client)
-        self._gdrive_client = GDriveClient(self._google_client, self._db_client)
+        self._google_drive = GoogleDrive(self._google_client, self._db_client)
 
         self.__register_handlers()
 
@@ -66,7 +66,7 @@ class BotManager:
         parent_folder_id = await self._db_client.get_saving_folder_id(message.from_user.id)
 
         await process_message.edit_text("Uploading to Google Drive...")
-        upload_response = await self._gdrive_client.upload_file(
+        upload_response = await self._google_drive.upload_file(
             InMemoryFile(file_name, message.document.mime_type, file.getbuffer()),
             user_creds,
             parent_folder_id
@@ -90,7 +90,7 @@ class BotManager:
                                 "  Example: `/set_saving_folder {folder_name}`")
 
         else:
-            if (folder_id := await self._gdrive_client.get_folder_id(folder_name, user_creds)) is not None:
+            if (folder_id := await self._google_drive.get_folder_id(folder_name, user_creds)) is not None:
                 await self._db_client.set_saving_folder_id(message.from_user.id, folder_id)
                 await message.reply(f"✅ Saving folder is changed to {folder_name}")
             else:
@@ -106,7 +106,7 @@ class BotManager:
                                 "  Example: `/create_folder {folder_name}`")
         else:
             parent_folder = await self._db_client.get_saving_folder_id(message.from_user.id)
-            if (folder_id := await self._gdrive_client.create_folder(folder_name, user_creds, parent_folder)) is not None:
+            if (folder_id := await self._google_drive.create_folder(folder_name, user_creds, parent_folder)) is not None:
                 await message.reply(f"✅ Folder `{folder_name}` successfully created.")
             else:
                 await message.reply(f"❌ Can't create folder `{folder_name}` right now.")
@@ -114,7 +114,7 @@ class BotManager:
     @with_user_authentication(HandlerType.Callback)
     async def _make_file_public(self, _app, callback: CallbackQuery, user_creds: dict):
         try:
-            await self._gdrive_client.make_file_public(callback.data, user_creds)
+            await self._google_drive.make_file_public(callback.data, user_creds)
 
         except Exception:
             _logger.error(traceback.format_exc())
