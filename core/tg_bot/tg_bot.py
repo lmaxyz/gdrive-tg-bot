@@ -32,6 +32,7 @@ class GoogleDriveManager(Client):
         super().__init__("gdrive_tg_bot", APP_CLIENT_ID, APP_API_HASH, bot_token=BOT_TOKEN)
         self._db_client = db_client
         self._google_client = google_client
+        self.__register_handlers()
 
     @property
     def db_client(self):
