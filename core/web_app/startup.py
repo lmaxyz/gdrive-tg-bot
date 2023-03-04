@@ -4,7 +4,7 @@ from aiogoogle import Aiogoogle
 from settings import DB_FILE_NAME, G_APP_CREDS
 
 from core.db import DBClient
-from core.tg_bot import BotManager
+from core.tg_bot import GoogleDriveManager
 
 
 async def _db_connect(application: Application):
@@ -21,8 +21,8 @@ async def _init_google_client(application: Application):
 
 
 async def _start_tg_bot(application: Application):
-    bot_manager = BotManager(application['db_client'], application['google_client'])
-    await bot_manager.start_tg_bot()
+    bot_manager = GoogleDriveManager(application['db_client'], application['google_client'])
+    await bot_manager.start()
     application['bot_manager'] = bot_manager
 
 

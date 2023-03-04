@@ -6,7 +6,7 @@ async def _db_disconnect(application: Application):
 
 
 async def _stop_tg_bot(application: Application):
-    await application['bot_manager'].stop_tg_bot()
+    await application['bot_manager'].stop()
 
 
 cleanup_actions = (

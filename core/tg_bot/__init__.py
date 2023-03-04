@@ -1,1 +1,1 @@
-from .tg_bot import BotManager
+from .tg_bot import GoogleDriveManager
