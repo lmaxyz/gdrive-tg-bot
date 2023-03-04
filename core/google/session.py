@@ -34,6 +34,7 @@ class GoogleSession:
         self._drive_client = GoogleDrive(self._google_client, self._user_creds)
 
     async def _authenticate_user(self):
+        print("Authentication")
         if (user_creds := await self._db_client.get_user_creds(self._user_id)) is not None:
             if self._google_client.oauth2.is_expired(user_creds):
                 try:
@@ -46,8 +47,8 @@ class GoogleSession:
                     await self._update_user_creds(user_creds)
             else:
                 await self._update_user_creds(user_creds)
-
-        self._user_creds = None
+        else:
+            self._user_creds = None
 
     def is_authorized(self) -> bool:
         return self._user_creds is not None
