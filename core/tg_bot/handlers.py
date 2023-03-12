@@ -7,6 +7,8 @@ from .decorators import with_google_session
 from .types import HandlerType
 from .file import InMemoryFile
 
+from settings import HELP_MESSAGE
+
 
 _logger = logging.getLogger(__name__)
 
@@ -82,6 +84,10 @@ async def make_file_public(_app, callback: CallbackQuery):
 
     else:
         await callback.answer("🚀 File can be shared now.")
+
+
+async def help_message(_app, message: Message):
+    await message.reply(HELP_MESSAGE)
 
 
 async def _update_downloading_progress(current, total, progress_tracking_message):

@@ -12,14 +12,19 @@ from aiogoogle import Aiogoogle
 from settings import APP_API_HASH, APP_CLIENT_ID, BOT_TOKEN
 from core.db import DBClient
 
-from .handlers import upload_file_to_google_drive, make_file_public, create_folder, set_saving_folder
+from .handlers import (
+    upload_file_to_google_drive,
+    make_file_public,
+    create_folder,
+    set_saving_folder,
+    help_message
+)
 
 _logger = logging.getLogger(__name__)
 
 
 class GoogleDriveManager(Client):
     _AUTHORIZATION_MESSAGE = "Please authorize in our app with your google account.\nYou have 2 minutes."
-    _HELP_MESSAGE = "ToDo"
 
     def __init__(self, db_client: DBClient, google_client: Aiogoogle):
         super().__init__("gdrive_tg_bot", APP_CLIENT_ID, APP_API_HASH, bot_token=BOT_TOKEN)
@@ -39,6 +44,7 @@ class GoogleDriveManager(Client):
         self.add_handler(MessageHandler(upload_file_to_google_drive, filters.document))
         self.add_handler(MessageHandler(set_saving_folder, filters.command("set_saving_folder")))
         self.add_handler(MessageHandler(create_folder, filters.command("create_folder")))
+        self.add_handler(MessageHandler(help_message, filters.command("help")))
         self.add_handler(CallbackQueryHandler(make_file_public))
 
     async def send_authorization_request(self, user_id, authorization_url):

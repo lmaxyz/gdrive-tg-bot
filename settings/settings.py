@@ -24,3 +24,12 @@ G_APP_CREDS['scopes'] = SCOPES
 G_APP_CREDS['redirect_uri'] = os.getenv("REDIRECT_URI")
 
 DB_FILE_NAME = 'creds.db'
+
+HELP_MESSAGE = """This bot created to interact with your google drive by telegram messages.
+Just send message with attached document and it will uploaded to your google drive.
+
+There are some commands to improve interaction experience:
+/help - Show help text.
+/create_folder - Create new folder inside current one.
+/set_saving_folder - Change uploading destination folder (Default is google drive root).
+"""

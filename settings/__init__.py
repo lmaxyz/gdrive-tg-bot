@@ -6,4 +6,5 @@ from .settings import (
     SCOPES,
     G_APP_CREDS,
     DB_FILE_NAME,
+    HELP_MESSAGE,
 )
