@@ -19,9 +19,9 @@ async def upload_file_to_google_drive(app, message: Message):
     file_name = message.document.file_name
     _logger.info(f"[+] Start downloading '{file_name}'")
     process_message = await message.reply("Start file downloading...")
-
-    file = await app.download_media(message.document, in_memory=True, progress_args=(process_message,),
-                                                 progress=_update_downloading_progress)
+    tracker = _DownloadingTracker(process_message)
+    file = await app.download_media(message.document, in_memory=True, progress_args=(tracker,),
+                                    progress=_update_downloading_progress)
     parent_folder_id = await app.db_client.get_saving_folder_id(message.from_user.id)
 
     await process_message.edit_text("Uploading to Google Drive...")
@@ -91,10 +91,25 @@ async def help_message(_app, message: Message):
     await message.reply(HELP_MESSAGE)
 
 
-async def _update_downloading_progress(current, total, progress_tracking_message):
-    current_percent = current * 100 / total
-    if current_percent % 5 == 0:
+async def _update_downloading_progress(current, total, tracker: "_DownloadingTracker"):
+    current_percent = int(current * 100 / total)
+    if current_percent != tracker.previous_value:
+        tracker.previous_value = current_percent
         try:
-            await progress_tracking_message.edit_text(f"Downloading from Telegram...\n**{current_percent:.1f}%**")
+            await tracker.message.edit_text(f"Downloading from Telegram...\n**{current_percent}%**")
         except FloodWait:
             pass
+
+
+class _DownloadingTracker:
+    def __init__(self, message: Message):
+        self.message = message
+        self._previous_value = 0
+
+    @property
+    def previous_value(self):
+        return self._previous_value
+
+    @previous_value.setter
+    def previous_value(self, new_value: int):
+        self._previous_value = new_value
