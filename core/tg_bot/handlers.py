@@ -2,6 +2,7 @@ import logging
 import traceback
 
 from pyrogram.types import CallbackQuery, Message, InlineKeyboardMarkup, InlineKeyboardButton
+from pyrogram.errors.exceptions.flood_420 import FloodWait
 
 from .decorators import with_google_session
 from .types import HandlerType
@@ -91,4 +92,9 @@ async def help_message(_app, message: Message):
 
 
 async def _update_downloading_progress(current, total, progress_tracking_message):
-    await progress_tracking_message.edit_text(f"Downloading from Telegram...\n**{current * 100 / total:.1f}%**")
+    current_percent = current * 100 / total
+    if current_percent % 5 == 0:
+        try:
+            await progress_tracking_message.edit_text(f"Downloading from Telegram...\n**{current_percent:.1f}%**")
+        except FloodWait:
+            pass
