@@ -101,6 +101,7 @@ async def get_current_folder(app, message: Message):
                 await message.reply(f'Current folder is "{folder_name}"')
 
     except Exception as e:
+        _logger.error(traceback.format_exc())
         await message.reply('Some error occurred.')
 
 
