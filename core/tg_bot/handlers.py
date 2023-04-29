@@ -49,7 +49,11 @@ async def set_saving_folder(app, message: Message):
                             "  Template: `/set_saving_folder {folder_name}`")
 
     else:
-        if (folder_id := await message.from_user.google_session.drive.get_folder_id(folder_name)) is not None:
+        if folder_name == "/":
+            await app.db_client.set_saving_folder_id(message.from_user.id, None)
+            await message.reply(f"✅ Saving folder is changed to '/'")
+
+        elif (folder_id := await message.from_user.google_session.drive.get_folder_id(folder_name)) is not None:
             await app.db_client.set_saving_folder_id(message.from_user.id, folder_id)
             await message.reply(f"✅ Saving folder is changed to {folder_name}")
         else:
@@ -74,19 +78,6 @@ async def create_folder(app, message: Message):
             await message.reply(f"❌ Can't create folder `{folder_name}` right now.")
 
 
-@with_google_session(HandlerType.Callback)
-async def make_file_public(_app, callback: CallbackQuery):
-    try:
-        await callback.from_user.google_session.drive.make_file_public(callback.data)
-
-    except Exception:
-        _logger.error(traceback.format_exc())
-        await callback.message.reply("❌ Failed to make file public. Try again later.")
-
-    else:
-        await callback.answer("🚀 File can be shared now.")
-
-
 @with_google_session(HandlerType.Message)
 async def get_current_folder(app, message: Message):
     try:
@@ -103,6 +94,19 @@ async def get_current_folder(app, message: Message):
     except Exception as e:
         _logger.error(traceback.format_exc())
         await message.reply('Some error occurred.')
+
+
+@with_google_session(HandlerType.Callback)
+async def make_file_public(_app, callback: CallbackQuery):
+    try:
+        await callback.from_user.google_session.drive.make_file_public(callback.data)
+
+    except Exception:
+        _logger.error(traceback.format_exc())
+        await callback.message.reply("❌ Failed to make file public. Try again later.")
+
+    else:
+        await callback.answer("🚀 File can be shared now.")
 
 
 async def help_message(_app, message: Message):

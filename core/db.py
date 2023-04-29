@@ -1,6 +1,7 @@
 import json
 import sqlite3
 
+from typing import Union
 from aiosqlite import connect, Connection
 
 
@@ -54,7 +55,7 @@ class DBClient:
 
         await self._connection.commit()
 
-    async def set_saving_folder_id(self, user_id: int, folder_id: str):
+    async def set_saving_folder_id(self, user_id: int, folder_id: Union[str, None]):
         await self._connection.execute("UPDATE user_settings SET saving_dir=? WHERE user_id=?", (folder_id, user_id))
         await self._connection.commit()
 
