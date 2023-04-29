@@ -17,7 +17,8 @@ from .handlers import (
     make_file_public,
     create_folder,
     set_saving_folder,
-    help_message
+    help_message,
+    get_current_folder
 )
 
 _logger = logging.getLogger(__name__)
@@ -44,6 +45,7 @@ class GoogleDriveManager(Client):
         self.add_handler(MessageHandler(upload_file_to_google_drive, filters.document))
         self.add_handler(MessageHandler(set_saving_folder, filters.command("set_saving_folder")))
         self.add_handler(MessageHandler(create_folder, filters.command("create_folder")))
+        self.add_handler(MessageHandler(get_current_folder, filters.command("current_folder")))
         self.add_handler(MessageHandler(help_message, filters.command("help")))
         self.add_handler(CallbackQueryHandler(make_file_public))
 
