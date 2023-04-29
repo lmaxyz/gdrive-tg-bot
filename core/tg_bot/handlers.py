@@ -87,6 +87,23 @@ async def make_file_public(_app, callback: CallbackQuery):
         await callback.answer("🚀 File can be shared now.")
 
 
+@with_google_session(HandlerType.Message)
+async def get_current_folder(app, message: Message):
+    try:
+        if (current_folder_id := await app.db_client.get_saving_folder_id(message.from_user.id)) is None:
+            await message.reply('Current folder is "/"')
+            return
+
+        else:
+            if (folder_name := await message.from_user.google_session.drive.get_folder_name(current_folder_id)) is None:
+                await message.reply(f'Current folder has been deleted. Please select another one.')
+            else:
+                await message.reply(f'Current folder is "{folder_name}"')
+
+    except Exception as e:
+        await message.reply('Some error occurred.')
+
+
 async def help_message(_app, message: Message):
     await message.reply(HELP_MESSAGE)
 
