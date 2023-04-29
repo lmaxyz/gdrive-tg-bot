@@ -11,7 +11,7 @@ class GoogleDrive:
         self._google_client = google_client
         self._user_creds = UserCreds(**user_creds)
 
-    async def upload_file(self, file, parent_folder_id=None):
+    async def upload_file(self, file, parent_folder_id=None) -> str:
         async with self._google_client as google:
             drive_v3 = await google.discover('drive', 'v3')
 
@@ -54,14 +54,16 @@ class GoogleDrive:
         if found_folders := found_folders['files']:
             return found_folders[0]['id']
 
-    async def get_folder_name(self, folder_id: str) -> str:
+    async def get_folder_name(self, folder_id: str) -> Union[str, None]:
         async with self._google_client as google:
             drive = await google.discover('drive', 'v3')
-            request = drive.files.list(q=f"mimeType='{self._FOLDER_MIME_TYPE}' and id='{folder_id}'")
-            found_folders = await google.as_user(request, user_creds=self._user_creds)
+            request = drive.files.get(fileId=folder_id)
 
-            if found_folders := found_folders['files']:
-                return found_folders[0]['name']
+            try:
+                found_folder = await google.as_user(request, user_creds=self._user_creds)
+                return found_folder['name']
+            except:
+                return None
 
     async def create_folder(self, folder_name: str, parent_folder=None) -> Union[str, None]:
         async with self._google_client as google:
